@@ -3,7 +3,7 @@ name = "purwa-yolo"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Herman Sugi Harto",email = "herman.sugiharto@intellinum.com"}
+    {name = "steven",email = "stevenlee13092003@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
