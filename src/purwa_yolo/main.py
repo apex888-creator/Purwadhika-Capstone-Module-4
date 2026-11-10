@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 from collections import Counter, defaultdict
 from io import BytesIO
 from pathlib import Path
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import supervision as sv
+import torch
 from PIL import Image
 from ultralytics import YOLO
 
@@ -30,6 +32,13 @@ VIDEO_TYPES = ["mp4", "mov", "avi", "mkv"]
 MAX_IMAGE_MB = 10      # image size limit (checked in code)
 MAX_VIDEO_MB = 100     # video size limit; server.maxUploadSize must be >= this
 MAX_VIDEO_SIDE = 960   # longest side of the output video (px), for speed
+
+# Inference settings. Use the GPU (with FP16) when available, otherwise CPU.
+DEVICE = 0 if torch.cuda.is_available() else "cpu"
+USE_HALF = DEVICE != "cpu"
+# smaller = faster, larger = better for small objects
+INFER_SIZES = [480, 640, 800]
+DEFAULT_IMGSZ = 640
 
 # Base ERP rates (USD per vehicle). Key = model class name (lowercase).
 DEFAULT_RATES_USD = {"car": 2.0, "van": 3.0, "bus": 5.0}
@@ -65,8 +74,12 @@ def resolve_model_path(use_case: str):
 # Cache model loading - models are loaded only once per file
 @st.cache_resource
 def load_model(model_path: str):
-    """Load YOLO model with caching for performance"""
-    return YOLO(model_path)
+    """Load YOLO model once (cached) and warm it up so the first real
+    detection is not slow (lazy initialisation, layer fusing, etc.)."""
+    model = YOLO(model_path)
+    model(np.zeros((DEFAULT_IMGSZ, DEFAULT_IMGSZ, 3), dtype=np.uint8),
+          imgsz=DEFAULT_IMGSZ, device=DEVICE, half=USE_HALF, verbose=False)
+    return model
 
 
 # Cache annotators - reuse same annotator objects
@@ -76,10 +89,11 @@ def get_annotators():
     return sv.BoxAnnotator(), sv.LabelAnnotator()
 
 
-def detect_frame(frame_bgr, model, conf, tracker=None):
+def detect_frame(frame_bgr, model, conf, imgsz, tracker=None):
     """Run detection on one frame (BGR, OpenCV format).
     Return (annotated BGR frame, list of class names, detections)."""
-    results = model(frame_bgr, conf=conf, verbose=False)[0]
+    results = model(frame_bgr, conf=conf, imgsz=imgsz, device=DEVICE,
+                    half=USE_HALF, verbose=False)[0]
     detections = sv.Detections.from_ultralytics(results).with_nms()
     if tracker is not None:
         detections = tracker.update_with_detections(detections)
@@ -102,13 +116,13 @@ def detect_frame(frame_bgr, model, conf, tracker=None):
     return annotated, names, detections
 
 
-def process_image(image_bytes, model, conf):
+def process_image(image_bytes, model, conf, imgsz):
     """Image pipeline. Return (annotated RGB image, dict of counts per class)."""
     pil_image = Image.open(BytesIO(image_bytes)).convert("RGB")
     pil_image.thumbnail((1920, 1920))   # saves memory, keeps aspect ratio
     frame_bgr = np.ascontiguousarray(np.array(pil_image)[:, :, ::-1])
 
-    annotated_bgr, names, _ = detect_frame(frame_bgr, model, conf)
+    annotated_bgr, names, _ = detect_frame(frame_bgr, model, conf, imgsz)
     annotated_rgb = np.ascontiguousarray(annotated_bgr[:, :, ::-1])
     return annotated_rgb, dict(Counter(names))
 
@@ -130,8 +144,8 @@ def open_video_writer(path, fps, size):
         return vw.write, vw.release, False
 
 
-def process_video(video_bytes, suffix, model, conf, frame_skip, max_seconds,
-                  progress_cb):
+def process_video(video_bytes, suffix, model, conf, imgsz, frame_skip,
+                  max_seconds, progress_cb):
     """Detect + track a video frame by frame (streaming).
     Return (mp4 bytes, dict of UNIQUE vehicle counts per class, number of
     processed frames, is_h264, tracked, most vehicles seen in a single frame)."""
@@ -188,7 +202,7 @@ def process_video(video_bytes, suffix, model, conf, frame_skip, max_seconds,
                 if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                     frame = cv2.resize(frame, (out_w, out_h))
                 annotated, names, detections = detect_frame(
-                    frame, model, conf, tracker)
+                    frame, model, conf, imgsz, tracker)
                 write(annotated)
 
                 max_simultaneous = max(max_simultaneous, len(names))
@@ -422,13 +436,19 @@ if model_path is None:
 with st.spinner(f"Loading {selected_model} model..."):
     model = load_model(str(model_path))
 
-st.success(f"✅ {selected_model} model loaded!")
+st.success(f"✅ {selected_model} model loaded! "
+           f"(running on {'GPU' if DEVICE != 'cpu' else 'CPU'})")
 
 # Rate settings only apply to the Vehicle use case
 erp_cfg = erp_settings() if selected_model == "Vehicle" else None
 
 conf = st.slider("Confidence threshold", min_value=0.05,
                  max_value=0.95, value=0.25, step=0.05)
+
+imgsz = st.select_slider(
+    "Inference size (px)", options=INFER_SIZES, value=DEFAULT_IMGSZ,
+    help="Smaller is faster; larger can detect small objects better but "
+         "is slower. Try 480 or 640 if processing feels slow.")
 
 uploaded_file = st.file_uploader(
     "Upload Image / Video",
@@ -466,28 +486,32 @@ if uploaded_file is not None:
     # Rate settings are NOT part of params: changing them does not require
     # re-running detection, the charge is recalculated from the stored result.
     params = (uploaded_file.name, uploaded_file.size,
-              selected_model, conf, frame_skip, max_seconds)
+              selected_model, conf, imgsz, frame_skip, max_seconds)
 
     if st.button("🔍 Detect Objects", type="primary"):
         data = uploaded_file.getvalue()
+        t0 = time.perf_counter()
         try:
             if is_video:
                 bar = st.progress(0.0, text="Processing video...")
                 (video_bytes, counts, n_frames, is_h264, tracked,
                  max_simul) = process_video(
-                    data, f".{ext}", model, conf, frame_skip, max_seconds,
+                    data, f".{ext}", model, conf, imgsz, frame_skip,
+                    max_seconds,
                     lambda p: bar.progress(p, text="Processing video..."))
                 bar.empty()
                 st.session_state["result"] = {
                     "params": params, "kind": "video", "data": video_bytes,
                     "counts": counts, "frames": n_frames, "h264": is_h264,
-                    "tracked": tracked, "density": max_simul}
+                    "tracked": tracked, "density": max_simul,
+                    "elapsed": time.perf_counter() - t0}
             else:
                 with st.spinner("Detecting objects..."):
-                    img, counts = process_image(data, model, conf)
+                    img, counts = process_image(data, model, conf, imgsz)
                 st.session_state["result"] = {
                     "params": params, "kind": "image", "data": img,
-                    "counts": counts, "density": sum(counts.values())}
+                    "counts": counts, "density": sum(counts.values()),
+                    "elapsed": time.perf_counter() - t0}
         except Exception as e:
             st.session_state.pop("result", None)
             st.error(f"Failed to process file: {e}")
@@ -498,6 +522,7 @@ if uploaded_file is not None:
     if res and res["params"] == params:
         st.subheader("Detection Results")
         is_vehicle = selected_model == "Vehicle"
+        st.caption(f"Processing time: {res['elapsed']:.1f} s")
 
         if res["kind"] == "image":
             st.image(res["data"], caption="Detected Objects",
