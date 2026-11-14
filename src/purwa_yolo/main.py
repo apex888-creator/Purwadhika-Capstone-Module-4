@@ -4,7 +4,7 @@ import time
 from collections import Counter, defaultdict
 from io import BytesIO
 from pathlib import Path
-
+import random
 import cv2
 import numpy as np
 import pandas as pd
@@ -13,8 +13,61 @@ import supervision as sv
 import torch
 from PIL import Image
 from ultralytics import YOLO
+from src.purwa_yolo.fastplate_ocr import recognize_plate
 
 st.set_page_config(page_title="Object Detection", page_icon="🎯")
+
+
+def human_check():
+    """Simple front gate: a one-time math question that basic bots cannot pass.
+    Nothing below the call to this function runs until the check is passed."""
+    ss = st.session_state
+    if ss.get("human_ok"):
+        return
+
+    # temporary lock after too many wrong answers
+    if time.time() < ss.get("hc_lock_until", 0):
+        st.title("🤖 Human check")
+        st.error("Too many wrong answers. Please wait a few seconds "
+                 "and reload the page.")
+        st.stop()
+
+    # create a fresh question (kept on the server, never sent to the browser)
+    if "hc" not in ss:
+        a, b = random.randint(2, 9), random.randint(2, 9)
+        op = random.choice(["+", "×"])
+        ss["hc"] = {"q": f"{a} {op} {b}",
+                    "ans": str(a + b if op == "+" else a * b),
+                    "t": time.time()}
+
+    st.title("🤖 Human check")
+    msg = ss.pop("hc_msg", None)
+    if msg:
+        st.error(msg)
+
+    with st.form("human_check_form"):
+        reply = st.text_input(f"To continue, solve: {ss['hc']['q']} = ?")
+        submitted = st.form_submit_button("Continue")
+
+    if submitted:
+        hc = ss.pop("hc", None)
+        too_fast = hc is None or time.time(
+        ) - hc["t"] < 2   # bots answer instantly
+        if hc is not None and reply.strip() == hc["ans"] and not too_fast:
+            ss["human_ok"] = True
+            st.rerun()
+
+        ss["hc_fails"] = ss.get("hc_fails", 0) + 1
+        if ss["hc_fails"] >= 3:                  # 3 wrong answers -> 30 s lock
+            ss["hc_lock_until"] = time.time() + 30
+            ss["hc_fails"] = 0
+        else:
+            ss["hc_msg"] = "That was not right. Please try the new question."
+        st.rerun()
+    st.stop()
+
+
+human_check()
 
 # Get project root directory (2 levels up from this file)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -102,6 +155,27 @@ def detect_frame(frame_bgr, model, conf, imgsz, tracker=None):
 
     box_annotator, label_annotator = get_annotators()
     annotated = frame_bgr.copy()
+    detected_plates = []
+    if len(detections) > 0 and hasattr(detections, "xyxy"):
+        for xyxy, name in zip(detections.xyxy, names):
+            # Batasi OCR hanya untuk kategori kendaraan tertentu (misal: car, van, bus)
+            if name.lower() in ["car", "van", "bus"]:
+                x1, y1, x2, y2 = map(int, xyxy)
+                # Ambil pastikan koordinat di dalam batas frame
+                h_img, w_img = frame_bgr.shape[:2]
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w_img, x2), min(h_img, y2)
+
+                if x2 > x1 and y2 > y1:
+                    # Crop area kendaraan dari frame BGR asli
+                    vehicle_crop = frame_bgr[y1:y2, x1:x2]
+                    # Panggil fungsi OCR yang sudah di-import di atas
+                    plate_text = recognize_plate(vehicle_crop)
+                    detected_plates.append(plate_text if plate_text else "")
+                else:
+                    detected_plates.append("")
+            else:
+                detected_plates.append("")
     if len(detections) > 0:
         annotated = box_annotator.annotate(
             scene=annotated, detections=detections)
@@ -410,7 +484,7 @@ def show_erp(counts, density, density_basis, cfg):
 
 # --- Main Streamlit section ---
 
-st.title("🎯 Object Detection")
+st.title("🎯 Electronic Road Pricing")
 
 # Model selection (default: first model whose file exists)
 use_cases = list(MODEL_FILES.keys())
@@ -442,8 +516,8 @@ st.success(f"✅ {selected_model} model loaded! "
 # Rate settings only apply to the Vehicle use case
 erp_cfg = erp_settings() if selected_model == "Vehicle" else None
 
-conf = st.slider("Confidence threshold", min_value=0.05,
-                 max_value=0.95, value=0.25, step=0.05)
+conf = st.slider("Confidence threshold", min_value=0.01,
+                 max_value=0.95, value=0.10, step=0.01)
 
 imgsz = st.select_slider(
     "Inference size (px)", options=INFER_SIZES, value=DEFAULT_IMGSZ,
@@ -527,9 +601,41 @@ if uploaded_file is not None:
         if res["kind"] == "image":
             st.image(res["data"], caption="Detected Objects",
                      use_container_width=True)
+            if selected_model == "Vehicle":
+                st.subheader("🚗 Hasil Pembacaan Plat Nomor (OCR)")
+                # Ambil ulang gambar asli yang di-upload untuk di-crop platnya
+                raw_img_bgr = np.array(Image.open(
+                    BytesIO(uploaded_file.getvalue())).convert("RGB"))[:, :, ::-1]
+
+                # Jalankan deteksi ulang sebentar untuk mendapatkan koordinat bounding box kendaraan
+                yolo_results = model(uploaded_file.getvalue(
+                ), conf=conf, imgsz=imgsz, verbose=False)[0]
+                detections = sv.Detections.from_ultralytics(
+                    yolo_results).with_nms()
+
+                plate_results = []
+                if len(detections) > 0 and hasattr(detections, "xyxy"):
+                    for xyxy, name in zip(detections.xyxy, [str(n) for n in detections.data.get("class_name", [])]):
+                        if name.lower() in ["car", "van", "bus"]:
+                            x1, y1, x2, y2 = map(int, xyxy)
+                            h_img, w_img = raw_img_bgr.shape[:2]
+                            crop = raw_img_bgr[max(0, y1):min(
+                                h_img, y2), max(0, x1):min(w_img, x2)]
+                            if crop.size > 0:
+                                text = recognize_plate(crop)
+                                if text:
+                                    plate_results.append(
+                                        {"Kendaraan": name.capitalize(), "Plat Nomor": text})
+
+                if plate_results:
+                    st.dataframe(pd.DataFrame(plate_results),
+                                 use_container_width=True)
+                else:
+                    st.info(
+                        "Belum ada plat nomor yang berhasil terbaca oleh OCR pada objek kendaraan.")
             buf = BytesIO()
             Image.fromarray(res["data"]).save(buf, format="PNG")
-            st.download_button("⬇️ Download result", data=buf.getvalue(),
+            st.download_button("⬇️ Download detection result", data=buf.getvalue(),
                                file_name="detection_result.png",
                                mime="image/png")
             if is_vehicle:
@@ -546,7 +652,7 @@ if uploaded_file is not None:
                     "play in the browser. Use the download button, or "
                     "install: `python -m pip install imageio imageio-ffmpeg`.")
             st.video(res["data"])
-            st.download_button("⬇️ Download result video", data=res["data"],
+            st.download_button("⬇️ Download detection result", data=res["data"],
                                file_name="detection_result.mp4",
                                mime="video/mp4")
             st.caption(f"{res['frames']} frames processed.")
