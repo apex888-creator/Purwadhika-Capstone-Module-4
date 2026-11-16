@@ -1,0 +1,15 @@
+# Deployment list (Streamlit Cloud). Keep it in sync with pyproject.toml,
+# which is the single source of truth for local work with Poetry.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+streamlit>=1.53.1,<2.0.0
+pandas>=2.2.0,<3.0.0
+numpy>=2.0.0,<3.0.0
+pillow>=11.0.0,<13.0.0
+ultralytics>=8.4.80,<9.0.0
+supervision>=0.27.0,<0.28.0
+torch>=2.5.0,<3.0.0
+opencv-python>=4.10.0,<6.0.0
+fast-alpr[onnx]>=0.4.0,<0.5.0
+imageio>=2.38.1,<3.0.0
+imageio-ffmpeg>=0.8.1,<0.9.0

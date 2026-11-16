@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local settings
+.env
+.streamlit/secrets.toml
+
+# Runtime output
+logs/
+*.log
+runs/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+
+# Model weights: remove this line if you want to commit models/*.pt
+# (best_vehicle.pt is about 20 MB, fine for GitHub; avoid files above 100 MB)
+# *.pt
