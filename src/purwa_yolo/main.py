@@ -28,14 +28,8 @@ DETECTION_KEY, OCR_KEY = "detection", "ocr"     # st.session_state keys
 
 # ---------------- inputs ----------------
 def select_model():
-    """Model picker. Return (use case, loaded YOLO model)."""
-    use_cases = list(cfg.MODEL_FILES)
-    default = next((i for i, name in enumerate(use_cases)
-                    if detector.resolve_model_path(name)), 0)
-    use_case = st.selectbox(
-        "Select Usecase", use_cases, index=default,
-        format_func=lambda n: n if detector.resolve_model_path(n)
-        else f"{n} (model not available)")
+    """Immediately load the YOLO Model for Vehicle Dataset."""
+    use_case = "Vehicle"
 
     path = detector.resolve_model_path(use_case)
     if path is None:
@@ -55,7 +49,7 @@ def pick_upload():
         "Upload Image / Video", accept_multiple_files=False,
         type=cfg.IMAGE_TYPES + cfg.VIDEO_TYPES,
         help=f"Images up to {cfg.MAX_IMAGE_MB} MB, "
-             f"videos up to {cfg.MAX_VIDEO_MB} MB.")
+        f"videos up to {cfg.MAX_VIDEO_MB} MB.")
     if file is None:
         return None
 
@@ -217,7 +211,8 @@ def ocr_section(det, settings):
         return
 
     n_crops = sum(len(v.crops) for v in det.vehicles)
-    st.caption(f"{len(det.vehicles)} vehicle(s) ready, {n_crops} crop(s) to read.")
+    st.caption(
+        f"{len(det.vehicles)} vehicle(s) ready, {n_crops} crop(s) to read.")
 
     if st.button("🔎 Read Plates", type="primary"):
         try:
