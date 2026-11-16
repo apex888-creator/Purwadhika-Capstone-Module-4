@@ -37,9 +37,9 @@ def select_model():
                    f"Place `{cfg.MODEL_FILES[use_case]}` in the `models/` folder.")
         st.stop()
 
-    with st.spinner(f"Loading {use_case} model..."):
+    with st.spinner(f"Loading ERP model..."):
         model = detector.load_model(str(path))
-    st.success(f"✅ {use_case} model loaded! (running on {describe_device()})")
+    st.success(f"✅ ERP System loaded! (running on {describe_device()})")
     return use_case, model
 
 
