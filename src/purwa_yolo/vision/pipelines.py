@@ -38,7 +38,8 @@ def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
 
     return DetectionResult(
         kind="image",
-        media=np.ascontiguousarray(annotated_bgr[:, :, ::-1]),   # RGB for display
+        media=np.ascontiguousarray(
+            annotated_bgr[:, :, ::-1]),   # RGB for display
         counts=dict(Counter(names)),
         density=len(names),
         vehicles=vehicles)
@@ -127,7 +128,8 @@ def process_video(video_bytes, suffix, model, conf, imgsz, frame_skip,
                 labels = None
                 if tracker:
                     ids = [int(t) for t in detections.tracker_id]
-                    labels = [f"#{tid} {name}" for tid, name in zip(ids, names)]
+                    labels = [f"#{tid} {name}" for tid,
+                              name in zip(ids, names)]
                     for tid, name, box in zip(ids, names, detections.xyxy):
                         track_votes[tid][name] += 1
                         if keeper:
@@ -151,12 +153,14 @@ def process_video(video_bytes, suffix, model, conf, imgsz, frame_skip,
         counts, vehicles = dict(max_counts), []
         if tracker:
             counts = Counter()
+            display_id = 1
             for tid, votes in track_votes.items():
                 if sum(votes.values()) >= cfg.MIN_TRACK_FRAMES:
                     cls = votes.most_common(1)[0][0]
                     counts[cls] += 1
                     vehicles.append(VehicleCrops(
-                        tid, cls, keeper.crops(tid) if keeper else []))
+                        display_id, cls, keeper.crops(tid) if keeper else []))
+                    display_id += 1
             counts = dict(counts)
 
         return DetectionResult(
