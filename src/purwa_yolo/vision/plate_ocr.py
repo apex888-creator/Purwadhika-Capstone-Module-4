@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 import numpy as np
 from ultralytics import YOLO
-
+import cv2
 from purwa_yolo import app_config as cfg
 from purwa_yolo.core.data import OcrStats, PlateReading
 from purwa_yolo.core.plate_rules import (best_plate, clean_plate, plate_parity,
@@ -115,7 +115,41 @@ def read_plate(alpr, crop_bgr, stats=None):
     if stats:
         stats.crops += 1
     try:
-        results = alpr.predict(crop_bgr)
+        # 1. Gunakan model YOLO Kaggle untuk cari lokasi plat di gambar mobil
+        from purwa_yolo import app_config as cfg
+        from ultralytics import YOLO
+
+        # (Idealnya model ini di-load sekali saja, tapi untuk testing ini aman)
+        plate_detector = YOLO(str(cfg.PLATE_MODEL_PATH))
+        detections = plate_detector(crop_bgr, conf=0.15, verbose=False)
+
+        best_plate_crop = None
+
+        # Kalau YOLO menemukan plat, potong (crop) bagian platnya saja
+        if len(detections[0].boxes) > 0:
+            # Ambil kotak plat dengan confidence tertinggi
+            box = detections[0].boxes[0].xyxy[0].cpu().numpy()
+            x1, y1, x2, y2 = map(int, box)
+            # Potong gambar (tambahkan sedikit margin/padding)
+            pad = 5
+            h, w = crop_bgr.shape[:2]
+            x1, y1 = max(0, x1-pad), max(0, y1-pad)
+            x2, y2 = min(w, x2+pad), min(h, y2+pad)
+            best_plate_crop = crop_bgr[y1:y2, x1:x2]
+
+        # Kalau YOLO tidak nemu plat, terpaksa kirim gambar mobil utuh
+        if best_plate_crop is None or best_plate_crop.size == 0:
+            best_plate_crop = crop_bgr
+
+        # 2. Perbesar gambar potongan plat (opsional, karena potongannya sudah fokus)
+        h, w = best_plate_crop.shape[:2]
+        if w < 200:  # Kalau masih kecil, perbesar 2x
+            best_plate_crop = cv2.resize(
+                best_plate_crop, (w*2, h*2), interpolation=cv2.INTER_CUBIC)
+
+        # 3. Kirim potongan plat yang sudah bersih ke ALPR
+        results = alpr.predict(best_plate_crop)
+
     except Exception as e:
         if stats:
             stats.errors += 1
