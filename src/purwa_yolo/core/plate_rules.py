@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from purwa_yolo.app_config import UTC_OFFSET_HOURS
 
-# Indonesian plate format, e.g. "B 1234 XYZ": 1-2 letters, 1-4 digits, 0-3 letters
-PLATE_RE = re.compile(r"^([A-Z]{1,2})(\d{1,4})([A-Z]{0,3})$")
+# Melonggarkan format: Izinkan 1-6 huruf di depan, 1-4 angka, dan 0-6 huruf di belakang
+PLATE_RE = re.compile(r"^([A-Z]{1,6})(\d{1,4})([A-Z]{0,6})$")
 
 
 def today_wib():
@@ -25,6 +25,27 @@ def plate_parity(text):
     if not m:
         return None
     return "odd" if int(m.group(2)[-1]) % 2 else "even"
+
+
+def plate_shape(text):
+    """Rough layout label from a cleaned plate text.
+
+    Because clean_plate() strips spaces, we classify from the pattern:
+      - "single"  : matches the standard 1-line pattern (1-2 letters, 1-4
+                    digits, 0-3 letters) -> typical single-row plate
+      - "double"  : longer than a standard plate (likely a 2-row plate that
+                    got concatenated, e.g. "B1234XYZ" from "B 1234\nXYZ")
+      - "unknown" : does not look like an Indonesian plate at all
+    """
+    if not text:
+        return "unknown"
+    clean = clean_plate(text)
+    if PLATE_RE.match(clean):
+        # 1-2 letters + 1-4 digits + 0-3 letters -> fits on one row
+        return "single"
+    if len(clean) > 9:
+        return "double"
+    return "unknown"
 
 
 def date_parity(date_obj):

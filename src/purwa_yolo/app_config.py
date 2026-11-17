@@ -24,7 +24,7 @@ MAX_VIDEO_SIDE = 960   # longest side of the output video (px), for speed
 # ---------------- YOLO inference ----------------
 # smaller = faster, larger = better for small objects
 INFER_SIZES = [480, 640, 800]
-DEFAULT_IMGSZ = 640
+DEFAULT_IMGSZ = 480
 # Video only: a vehicle is counted only if it is tracked for at least this
 # many processed frames (filters out momentary detections / short-lived IDs)
 MIN_TRACK_FRAMES = 3
@@ -46,17 +46,26 @@ CURRENCIES = {
 }
 
 # ---------------- vehicle crops (kept for the OCR step) ----------------
-MIN_CROP_PX = 64          # skip vehicle crops smaller than this (plate unreadable)
-CROP_MIN_WIDTH = 320      # smaller crops are enlarged so the plate detector can see the plate
-CROP_MAX_WIDTH = 480      # larger crops are shrunk to save memory
+# skip vehicle crops smaller than this (plate unreadable)
+MIN_CROP_PX = 64
+# smaller crops are enlarged so the plate detector can see the plate
+CROP_MIN_WIDTH = 320
+CROP_MAX_WIDTH = 640      # larger crops are shrunk to save memory
 CROP_JPEG_QUALITY = 95
-CROPS_PER_VEHICLE = 3     # video: keep the 3 largest crops of every tracked vehicle
+CROPS_PER_VEHICLE = 5     # video: keep the 5 largest crops of every tracked vehicle
 
 # ---------------- plate OCR + odd-even rule ----------------
 # fast-alpr = plate detector + fast-plate-ocr (the OCR step)
 PLATE_DETECTOR_MODEL = "yolo-v9-t-384-license-plate-end2end"
 PLATE_OCR_MODEL = "cct-xs-v2-global-model"
+# Optional custom plate detector (YOLOv12n, one class). When this file exists it
+# replaces fast-alpr's built-in detector; fast-plate-ocr still reads the text.
+PLATE_MODEL_PATH = MODELS_DIR / "Detect_Plate_Model.pt"
+PLATE_DETECTOR_CONF = 0.40      # minimum confidence for the custom plate detector
 MAX_OCR_VEHICLES = 60           # safety cap: vehicles read per OCR run
-DEFAULT_PLATE_SURCHARGE = 1.5   # applied when plate parity differs from the date parity
-DEFAULT_PLATE_MIN_CONF = 0.5    # below this OCR confidence a plate counts as unreadable
-UTC_OFFSET_HOURS = 7            # Indonesia Western Time (WIB), no daylight saving
+# applied when plate parity differs from the date parity
+DEFAULT_PLATE_SURCHARGE = 1.5
+# below this OCR confidence a plate counts as unreadable
+DEFAULT_PLATE_MIN_CONF = 0.2
+# Indonesia Western Time (WIB), no daylight saving
+UTC_OFFSET_HOURS = 7

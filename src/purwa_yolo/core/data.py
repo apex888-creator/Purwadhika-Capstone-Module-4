@@ -17,10 +17,12 @@ class VehicleCrops:
 class DetectionResult:
     """Output of section 1 (YOLO)."""
     kind: str                       # "image" or "video"
-    media: object                   # annotated RGB array (image) or mp4 bytes (video)
+    # annotated RGB array (image) or mp4 bytes (video)
+    media: object
     counts: dict                    # {class name: number of vehicles}
     density: int                    # vehicles used for the density level
-    vehicles: list                  # list[VehicleCrops], one per counted vehicle
+    # list[VehicleCrops], one per counted vehicle
+    vehicles: list
     frames: int = 0                 # video only: frames processed
     h264: bool = True               # video only: playable in the browser?
     tracked: bool = True            # video only: unique vehicles via tracking?
@@ -49,3 +51,14 @@ class OcrResult:
     run_id: str                     # the DetectionResult it was computed from
     plates: list                    # list[PlateReading]
     elapsed: float
+
+
+@dataclass
+class OcrStats:
+    """Counters describing what happened during plate reading (for the UI)."""
+    crops: int = 0
+    errors: int = 0
+    first_error: str | None = None
+    plates_found: int = 0
+    valid_reads: int = 0
+    shapes: list = field(default_factory=list)

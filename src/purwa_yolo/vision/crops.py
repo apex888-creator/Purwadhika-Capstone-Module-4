@@ -52,7 +52,20 @@ def decode_crop(data):
 
 def make_crop(frame_bgr, box):
     """Crop a vehicle and return it as JPEG bytes (None if too small)."""
-    crop = vehicle_crop(frame_bgr, box)
+    # 1. Ambil koordinat box dari YOLO
+    x1, y1, x2, y2 = map(int, box)
+
+    # 2. Fokus ke bagian bawah mobil (60% ke bawah) tempat plat nomor berada
+    h = y2 - y1
+    y1_bawah = y1 + int(h * 0.5)
+
+    # 3. Buat kotak baru yang hanya bagian bawah
+    box_bawah = (x1, y1_bawah, x2, y2)
+
+    # 4. Potong gambar menggunakan fungsi bawaan Anda (vehicle_crop)
+    crop = vehicle_crop(frame_bgr, box_bawah)
+
+    # 5. Simpan hasilnya
     return None if crop is None else encode_crop(fit_width(crop))
 
 
@@ -65,7 +78,8 @@ class CropKeeper:
 
     def __init__(self, per_vehicle=cfg.CROPS_PER_VEHICLE):
         self.per_vehicle = per_vehicle
-        self._best = defaultdict(list)    # vehicle id -> [(area, jpeg)], largest first
+        # vehicle id -> [(area, jpeg)], largest first
+        self._best = defaultdict(list)
 
     def add(self, vehicle_id, frame_bgr, box):
         x1, y1, x2, y2 = box

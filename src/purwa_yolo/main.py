@@ -211,6 +211,24 @@ def ocr_section(det, settings):
         return
 
     n_crops = sum(len(v.crops) for v in det.vehicles)
+    # --- KODE DEBUG UNTUK MELIHAT GAMBAR CROP ---
+    st.write("### Debug: Gambar yang dikirim ke ALPR")
+    from io import BytesIO
+    from PIL import Image
+
+    cols = st.columns(4)
+    count = 0
+    for v in det.vehicles:
+        if len(v.crops) > 0:
+            # Mencari nama ID secara otomatis (track_id, tid, atau id)
+            v_id = getattr(v, 'track_id', getattr(
+                v, 'tid', getattr(v, 'id', '?')))
+
+            img = Image.open(BytesIO(v.crops[0]))
+            cols[count % 4].image(
+                img, caption=f"Kendaraan #{v_id}", use_container_width=True)
+            count += 1
+    # --------------------------------------------
     st.caption(
         f"{len(det.vehicles)} vehicle(s) ready, {n_crops} crop(s) to read.")
 
