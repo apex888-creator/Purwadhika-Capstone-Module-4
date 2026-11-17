@@ -47,7 +47,7 @@ CURRENCIES = {
 
 # ---------------- vehicle crops (kept for the OCR step) ----------------
 # skip vehicle crops smaller than this (plate unreadable)
-MIN_CROP_PX = 64
+MIN_CROP_PX = 0
 # smaller crops are enlarged so the plate detector can see the plate
 CROP_MIN_WIDTH = 320
 CROP_MAX_WIDTH = 640      # larger crops are shrunk to save memory

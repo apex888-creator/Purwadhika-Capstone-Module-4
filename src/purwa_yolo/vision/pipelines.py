@@ -33,7 +33,20 @@ def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
     vehicles = []
     if collect_crops:
         for i, (name, box) in enumerate(zip(names, detections.xyxy), start=1):
-            jpeg = crops.make_crop(frame_bgr, box)
+            # --- KODE PAKSA CROP MANUAL ---
+            x1, y1, x2, y2 = map(int, box)
+            h, w = frame_bgr.shape[:2]
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
+
+            crop_img = frame_bgr[y1:y2, x1:x2]
+
+            jpeg = None
+            if crop_img.size > 0:
+                _, buffer = cv2.imencode('.jpg', crop_img)
+                jpeg = buffer.tobytes()
+            # -------------------------------
+
             vehicles.append(VehicleCrops(i, name, [jpeg] if jpeg else []))
 
     return DetectionResult(

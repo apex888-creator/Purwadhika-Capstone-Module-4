@@ -114,40 +114,29 @@ def read_plate(alpr, crop_bgr, stats=None):
         return None
     if stats:
         stats.crops += 1
+    best_plate_crop = None
     try:
-        # 1. Gunakan model YOLO Kaggle untuk cari lokasi plat di gambar mobil
         from purwa_yolo import app_config as cfg
         from ultralytics import YOLO
 
-        # (Idealnya model ini di-load sekali saja, tapi untuk testing ini aman)
         plate_detector = YOLO(str(cfg.PLATE_MODEL_PATH))
-        detections = plate_detector(crop_bgr, conf=0.15, verbose=False)
 
-        best_plate_crop = None
+        # Naikkan conf sedikit agar tidak asal potong gambar blur
+        detections = plate_detector(crop_bgr, conf=0.30, verbose=False)
 
-        # Kalau YOLO menemukan plat, potong (crop) bagian platnya saja
         if len(detections[0].boxes) > 0:
-            # Ambil kotak plat dengan confidence tertinggi
             box = detections[0].boxes[0].xyxy[0].cpu().numpy()
             x1, y1, x2, y2 = map(int, box)
-            # Potong gambar (tambahkan sedikit margin/padding)
             pad = 5
             h, w = crop_bgr.shape[:2]
             x1, y1 = max(0, x1-pad), max(0, y1-pad)
             x2, y2 = min(w, x2+pad), min(h, y2+pad)
             best_plate_crop = crop_bgr[y1:y2, x1:x2]
 
-        # Kalau YOLO tidak nemu plat, terpaksa kirim gambar mobil utuh
         if best_plate_crop is None or best_plate_crop.size == 0:
             best_plate_crop = crop_bgr
 
-        # 2. Perbesar gambar potongan plat (opsional, karena potongannya sudah fokus)
-        h, w = best_plate_crop.shape[:2]
-        if w < 200:  # Kalau masih kecil, perbesar 2x
-            best_plate_crop = cv2.resize(
-                best_plate_crop, (w*2, h*2), interpolation=cv2.INTER_CUBIC)
-
-        # 3. Kirim potongan plat yang sudah bersih ke ALPR
+        # LANGSUNG KIRIM KE ALPR TANPA RESIZE
         results = alpr.predict(best_plate_crop)
 
     except Exception as e:
@@ -155,7 +144,8 @@ def read_plate(alpr, crop_bgr, stats=None):
             stats.errors += 1
             stats.first_error = stats.first_error or f"{type(e).__name__}: {e}"[
                 :200]
-        return None
+        return None, None, None
+
     best = None
     for r in results:
         ocr = getattr(r, "ocr", None)
@@ -164,9 +154,14 @@ def read_plate(alpr, crop_bgr, stats=None):
         text, conf = clean_plate(ocr.text), _mean_conf(ocr.confidence)
         if text and (best is None or conf > best[1]):
             best = (text, conf)
+
     if best and stats:
         stats.plates_found += 1
-    return best
+
+    if best:
+        return best[0], best[1], best_plate_crop
+    else:
+        return None, None, best_plate_crop
 
 
 def read_plates(vehicles, alpr, progress_cb=None, stats=None):
@@ -178,20 +173,36 @@ def read_plates(vehicles, alpr, progress_cb=None, stats=None):
     """
     stats = stats if stats is not None else OcrStats()
     readings = []
+    crops_for_debug = []  # List untuk menyimpan gambar crop
+
     for i, vehicle in enumerate(vehicles):
         votes = defaultdict(lambda: [0.0, 0])      # text -> [sum_conf, n]
+        best_crop_for_vehicle = None
+
         if i < cfg.MAX_OCR_VEHICLES:
             for jpeg in vehicle.crops:
-                read = read_plate(alpr, decode_crop(jpeg), stats)
+                text, conf, crop_img = read_plate(
+                    alpr, decode_crop(jpeg), stats)
                 # valid plates only
-                if read:
-                    votes[read[0]][0] += read[1]
-                    votes[read[0]][1] += 1
+                if text:
+                    votes[text][0] += conf
+                    votes[text][1] += 1
                     stats.valid_reads += 1
+                # Simpan gambar crop pertama
+                if crop_img is not None and best_crop_for_vehicle is None:
+                    best_crop_for_vehicle = crop_img
+
         best = best_plate(dict(votes))
         readings.append(PlateReading(
             vehicle.vehicle_id, vehicle.cls,
             best[0] if best else None, best[1] if best else 0.0))
+
+        # ========================================================
+        # TAMBAHKAN BARIS INI AGAR GAMBAR MASUK KE DALAM LIST
+        # ========================================================
+        crops_for_debug.append(best_crop_for_vehicle)
+
         if progress_cb:
             progress_cb((i + 1) / len(vehicles))
-    return readings
+
+    return readings, crops_for_debug
