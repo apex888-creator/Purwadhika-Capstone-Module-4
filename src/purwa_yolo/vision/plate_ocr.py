@@ -80,6 +80,10 @@ def is_available():
 
 
 @lru_cache(maxsize=1)
+def _get_plate_yolo():
+    return YOLO(str(cfg.PLATE_MODEL_PATH))
+
+
 def get_plate_reader():
     """Load the ALPR pipeline once (cached). Raises ValueError with a hint."""
     try:
@@ -107,61 +111,77 @@ def _mean_conf(c):
         return 0.0
 
 
+def _plate_variants(plate, target_w=384):
+    """Original + upscaled/sharpened + upscaled/contrast-enhanced versions."""
+    h, w = plate.shape[:2]
+    s = max(1.0, target_w / max(w, 1))
+    up = cv2.resize(plate, None, fx=s, fy=s, interpolation=cv2.INTER_CUBIC)
+
+    blur = cv2.GaussianBlur(up, (0, 0), 2)
+    sharp = cv2.addWeighted(up, 1.6, blur, -0.6, 0)
+
+    gray = cv2.cvtColor(up, cv2.COLOR_BGR2GRAY)
+    gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4)).apply(gray)
+    clahe = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+    return [plate, sharp, clahe]
+
+
+def _ocr_plate(alpr, plate):
+    """Read an already-cropped plate directly (skips the second detector).
+    Returns (text, conf) of the best variant, or (None, None)."""
+    best = None
+    for img in _plate_variants(plate):
+        try:
+            if hasattr(alpr, "ocr"):
+                r = alpr.ocr.predict(img)
+                rs = [r] if r is not None else []
+            else:                                   # fallback
+                rs = [getattr(x, "ocr", None) for x in alpr.predict(img)]
+        except Exception:
+            continue
+        for ocr in rs:
+            if ocr is None or not getattr(ocr, "text", None):
+                continue
+            text, conf = clean_plate(ocr.text), _mean_conf(ocr.confidence)
+            if text and (best is None or conf > best[1]):
+                best = (text, conf)
+    return best if best else (None, None)
+
+
 def read_plate(alpr, crop_bgr, stats=None):
-    """Return (plate_text, confidence) of the most confident plate found in a
-    vehicle crop, or None. `stats` (OcrStats) records what happened."""
+    """Return (plate_text, confidence, plate_crop)."""
     if crop_bgr is None:
-        return None
+        return None, None, None
     if stats:
         stats.crops += 1
     best_plate_crop = None
     try:
-        from purwa_yolo import app_config as cfg
-        from ultralytics import YOLO
+        if cfg.PLATE_MODEL_PATH.exists():
+            detections = _get_plate_yolo()(crop_bgr, conf=0.30, verbose=False)
+            if len(detections[0].boxes) > 0:
+                x1, y1, x2, y2 = map(
+                    int, detections[0].boxes[0].xyxy[0].cpu().numpy())
+                h, w = crop_bgr.shape[:2]
+                px, py = int((x2 - x1) * 0.08), int((y2 - y1)
+                                                    * 0.15)  # padding proporsional
+                x1, y1 = max(0, x1 - px), max(0, y1 - py)
+                x2, y2 = min(w, x2 + px), min(h, y2 + py)
+                best_plate_crop = crop_bgr[y1:y2, x1:x2]
+        if best_plate_crop.shape[1] < cfg.MIN_PLATE_PX:
+            return None, None, best_plate_crop    # terlalu kecil, jangan menebak
 
-        plate_detector = YOLO(str(cfg.PLATE_MODEL_PATH))
-
-        # Naikkan conf sedikit agar tidak asal potong gambar blur
-        detections = plate_detector(crop_bgr, conf=0.30, verbose=False)
-
-        if len(detections[0].boxes) > 0:
-            box = detections[0].boxes[0].xyxy[0].cpu().numpy()
-            x1, y1, x2, y2 = map(int, box)
-            pad = 5
-            h, w = crop_bgr.shape[:2]
-            x1, y1 = max(0, x1-pad), max(0, y1-pad)
-            x2, y2 = min(w, x2+pad), min(h, y2+pad)
-            best_plate_crop = crop_bgr[y1:y2, x1:x2]
-
-        if best_plate_crop is None or best_plate_crop.size == 0:
-            best_plate_crop = crop_bgr
-
-        # LANGSUNG KIRIM KE ALPR TANPA RESIZE
-        results = alpr.predict(best_plate_crop)
-
+        text, conf = _ocr_plate(alpr, best_plate_crop)
     except Exception as e:
         if stats:
             stats.errors += 1
             stats.first_error = stats.first_error or f"{type(e).__name__}: {e}"[
                 :200]
-        return None, None, None
-
-    best = None
-    for r in results:
-        ocr = getattr(r, "ocr", None)
-        if ocr is None or not getattr(ocr, "text", None):
-            continue
-        text, conf = clean_plate(ocr.text), _mean_conf(ocr.confidence)
-        if text and (best is None or conf > best[1]):
-            best = (text, conf)
-
-    if best and stats:
-        stats.plates_found += 1
-
-    if best:
-        return best[0], best[1], best_plate_crop
-    else:
         return None, None, best_plate_crop
+
+    if text and stats:
+        stats.plates_found += 1
+    return text, conf, best_plate_crop
 
 
 def read_plates(vehicles, alpr, progress_cb=None, stats=None):
@@ -177,20 +197,20 @@ def read_plates(vehicles, alpr, progress_cb=None, stats=None):
 
     for i, vehicle in enumerate(vehicles):
         votes = defaultdict(lambda: [0.0, 0])      # text -> [sum_conf, n]
-        best_crop_for_vehicle = None
+        best_crop_for_vehicle, best_crop_conf = None, -1.0
 
         if i < cfg.MAX_OCR_VEHICLES:
             for jpeg in vehicle.crops:
                 text, conf, crop_img = read_plate(
                     alpr, decode_crop(jpeg), stats)
-                # valid plates only
                 if text:
                     votes[text][0] += conf
                     votes[text][1] += 1
                     stats.valid_reads += 1
-                # Simpan gambar crop pertama
-                if crop_img is not None and best_crop_for_vehicle is None:
-                    best_crop_for_vehicle = crop_img
+                if crop_img is not None:
+                    score = conf if text else 0.0
+                    if best_crop_for_vehicle is None or score > best_crop_conf:
+                        best_crop_for_vehicle, best_crop_conf = crop_img, score
 
         best = best_plate(dict(votes))
         readings.append(PlateReading(

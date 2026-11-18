@@ -24,9 +24,11 @@ from purwa_yolo.ui.sidebar import erp_settings
 from purwa_yolo.vision import detector, pipelines, plate_ocr
 
 DETECTION_KEY, OCR_KEY = "detection", "ocr"     # st.session_state keys
-
+OCR_CROPS_KEY = "ocr_crops"
 
 # ---------------- inputs ----------------
+
+
 def select_model():
     """Immediately load the YOLO Model for Vehicle Dataset."""
     use_case = "Vehicle"
@@ -184,10 +186,12 @@ def run_ocr(det):
     with st.spinner("Loading plate reader (the first run downloads the models)..."):
         alpr = plate_ocr.get_plate_reader()
     bar = st.progress(0.0, text="Reading plates...")
-    plates = plate_ocr.read_plates(
+    plates, plate_crops = plate_ocr.read_plates(      # <-- unpack tuple
         det.vehicles, alpr,
         lambda p: bar.progress(p, text="Reading plates..."))
     bar.empty()
+    st.session_state[OCR_CROPS_KEY] = {
+        "run_id": det.run_id, "crops": plate_crops}
     return OcrResult(det.run_id, plates, time.perf_counter() - t0)
 
 
@@ -229,13 +233,43 @@ def ocr_section(det, settings):
 
     st.subheader("OCR result")
     st.caption(f"Processing time: {ocr.elapsed:.1f} s")
+    show_plate_debug(det, ocr)
     b = compute_erp(det.counts, det.density, settings, ocr.plates)
     view.show_plate_table(b, settings)
     view.show_erp(b, settings, det.density, det.density_basis,
                   "🚦 ERP charge (with the odd-even rule)")
 
 
+def show_plate_debug(det, ocr):
+    """Per vehicle: the crop sent to the OCR and the plate text that was read."""
+    saved = st.session_state.get(OCR_CROPS_KEY)
+    if not saved or saved["run_id"] != det.run_id:
+        return
+    st.subheader("🔍 Plate crops sent to OCR")
+    cols_per_row = 3
+    items = list(zip(ocr.plates, saved["crops"]))
+    for start in range(0, len(items), cols_per_row):
+        cols = st.columns(cols_per_row)
+        for col, (reading, crop) in zip(cols, items[start:start + cols_per_row]):
+            with col:
+                if crop is not None and crop.size > 0:
+                    st.image(crop[:, :, ::-1], width="stretch")
+                    # <-- baru
+                    st.caption(
+                        f"Plate crop: {crop.shape[1]}×{crop.shape[0]} px")
+                else:
+                    st.caption("(no crop)")
+                text = reading.text or "— not readable —"
+                st.markdown(f"**#{reading.vehicle_id} {reading.cls}**")
+                st.code(text, language=None)
+                conf = getattr(reading, "confidence",
+                               getattr(reading, "conf", None))
+                if conf:
+                    st.caption(f"Confidence: {conf:.0%}")
+
 # ---------------- page ----------------
+
+
 def main():
     st.set_page_config(page_title="Object Detection", page_icon="🎯")
     human_check()   # front gate: the app below only runs after this is passed

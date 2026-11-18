@@ -21,10 +21,14 @@ from purwa_yolo.vision.detector import annotate_frame, run_detection
 
 # ---------------- image ----------------
 def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
-    """Detect vehicles in one image."""
-    pil_image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    pil_image.thumbnail((1920, 1920))   # saves memory, keeps aspect ratio
+    pil_full = Image.open(BytesIO(image_bytes)).convert("RGB")
+    full_bgr = np.ascontiguousarray(
+        np.array(pil_full)[:, :, ::-1])   # resolusi asli
+
+    pil_image = pil_full.copy()
+    pil_image.thumbnail((1920, 1920))
     frame_bgr = np.ascontiguousarray(np.array(pil_image)[:, :, ::-1])
+    scale = full_bgr.shape[1] / frame_bgr.shape[1]                    # >= 1
 
     names, detections = run_detection(frame_bgr, model, conf, imgsz)
     labels = [f"#{i} {name}" for i, name in enumerate(names, start=1)]
@@ -33,20 +37,18 @@ def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
     vehicles = []
     if collect_crops:
         for i, (name, box) in enumerate(zip(names, detections.xyxy), start=1):
-            # --- KODE PAKSA CROP MANUAL ---
-            x1, y1, x2, y2 = map(int, box)
-            h, w = frame_bgr.shape[:2]
+            x1, y1, x2, y2 = (int(v * scale)
+                              for v in box)            # skala ke gambar asli
+            h, w = full_bgr.shape[:2]
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(w, x2), min(h, y2)
-
-            crop_img = frame_bgr[y1:y2, x1:x2]
+            crop_img = full_bgr[y1:y2, x1:x2]
 
             jpeg = None
             if crop_img.size > 0:
-                _, buffer = cv2.imencode('.jpg', crop_img)
+                _, buffer = cv2.imencode(".jpg", crop_img,
+                                         [cv2.IMWRITE_JPEG_QUALITY, 95])
                 jpeg = buffer.tobytes()
-            # -------------------------------
-
             vehicles.append(VehicleCrops(i, name, [jpeg] if jpeg else []))
 
     return DetectionResult(

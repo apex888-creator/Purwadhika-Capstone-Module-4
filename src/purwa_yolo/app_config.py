@@ -48,6 +48,7 @@ CURRENCIES = {
 # ---------------- vehicle crops (kept for the OCR step) ----------------
 # skip vehicle crops smaller than this (plate unreadable)
 MIN_CROP_PX = 0
+MIN_PLATE_PX = 0
 # smaller crops are enlarged so the plate detector can see the plate
 CROP_MIN_WIDTH = 320
 CROP_MAX_WIDTH = 640      # larger crops are shrunk to save memory
@@ -57,7 +58,7 @@ CROPS_PER_VEHICLE = 5     # video: keep the 5 largest crops of every tracked veh
 # ---------------- plate OCR + odd-even rule ----------------
 # fast-alpr = plate detector + fast-plate-ocr (the OCR step)
 PLATE_DETECTOR_MODEL = "yolo-v9-t-384-license-plate-end2end"
-PLATE_OCR_MODEL = "cct-xs-v2-global-model"
+PLATE_OCR_MODEL = "cct-s-v2-global-model"
 # Optional custom plate detector (YOLOv12n, one class). When this file exists it
 # replaces fast-alpr's built-in detector; fast-plate-ocr still reads the text.
 PLATE_MODEL_PATH = MODELS_DIR / "Detect_Plate_Model.pt"
