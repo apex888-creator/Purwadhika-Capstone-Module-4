@@ -17,7 +17,6 @@ STR = {
     "flow1": ("Detect vehicles", "检测车辆"),
     "flow2": ("Read plates", "识别车牌"),
     "flow3": ("Get charge", "获取收费"),
-    "date_fmt": ("%d %b %Y", "%Y年%m月%d日"),
 
     # ---- gate ----
     "gate_title": ("Quick human check", "快速人机验证"),
@@ -232,5 +231,13 @@ def lang_button(key):
     def _flip():
         st.session_state[LANG_KEY] = "en" if lang() == "zh" else "zh"
 
-    st.button("🌐 语言: 简体中文" if lang() == "en" else "🌐 Language: English",
+    st.button("🌐 中文" if lang() == "en" else "🌐 English",
               key=key, on_click=_flip, width="stretch")
+
+
+def fmt_date(d):
+    """Format a date. Built by hand for Chinese, because on Windows
+    strftime() cannot take non-ASCII characters in its format string."""
+    if lang() == "zh":
+        return f"{d.year}年{d.month}月{d.day}日"
+    return d.strftime("%d %b %Y")

@@ -4,7 +4,7 @@ import streamlit as st
 from purwa_yolo.core.plate_rules import mask_plate
 from purwa_yolo.core.pricing import fmt_money, plate_rule_summary
 from purwa_yolo.ui import theme
-from purwa_yolo.ui.i18n import t, tr
+from purwa_yolo.ui.i18n import fmt_date, t, tr
 from purwa_yolo.ui.tables import show_table
 
 
@@ -87,7 +87,7 @@ def show_erp(b, settings, density, density_basis, title):
         date_par, hit_par = plate_rule_summary(settings)
         st.info(
             t("oddeven_info",
-              date=settings.plate_date.strftime(t("date_fmt")),
+              date=fmt_date(settings.plate_date),
               dp=tr(date_par), hp=tr(hit_par),
               sur=settings.plate_surcharge, unread=b.unread),
             icon="🔢")
