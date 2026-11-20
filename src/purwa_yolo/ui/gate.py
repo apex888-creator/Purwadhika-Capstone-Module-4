@@ -5,10 +5,11 @@ import time
 import streamlit as st
 
 from purwa_yolo.ui import theme
+from purwa_yolo.ui.i18n import lang_button, t
 
 
-def _header(msg):
-    theme.hero("Quick human check", msg)
+def _header(msg_key):
+    theme.hero(t("gate_title"), t(msg_key))
 
 
 def human_check():
@@ -19,11 +20,14 @@ def human_check():
 
     _, mid, _ = st.columns([1, 3, 1])
 
+    with mid:
+        lang_button("lang_gate")
+
     # temporary lock after too many wrong answers
     if time.time() < ss.get("hc_lock_until", 0):
         with mid:
-            _header("Too many wrong answers.")
-            st.error("Please wait a few seconds and reload the page.")
+            _header("gate_locked")
+            st.error(t("gate_wait"))
         st.stop()
 
     # create a fresh question (kept on the server, never sent to the browser)
@@ -35,15 +39,17 @@ def human_check():
                     "t": time.time()}
 
     with mid:
-        _header("Solve one small sum to open the ERP system.")
+        _header("gate_sub")
         msg = ss.pop("hc_msg", None)
         if msg:
-            st.error(msg)
+            st.error(t(msg))
 
         with st.form("human_check_form", border=True):
             st.markdown(f"### {ss['hc']['q']} = ?")
-            reply = st.text_input("Your answer", placeholder="Type a number")
-            submitted = st.form_submit_button("Continue", width="stretch")
+            reply = st.text_input(t("gate_answer"),
+                                  placeholder=t("gate_placeholder"))
+            submitted = st.form_submit_button(t("gate_continue"),
+                                              width="stretch")
 
     if submitted:
         hc = ss.pop("hc", None)
@@ -58,6 +64,6 @@ def human_check():
             ss["hc_lock_until"] = time.time() + 30
             ss["hc_fails"] = 0
         else:
-            ss["hc_msg"] = "That was not right. Try the new question."
+            ss["hc_msg"] = "gate_wrong"          # translation key
         st.rerun()
     st.stop()

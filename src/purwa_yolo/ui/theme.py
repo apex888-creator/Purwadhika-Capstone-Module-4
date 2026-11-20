@@ -7,7 +7,7 @@ from html import escape
 import streamlit as st
 
 CSS = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
 :root {
   --amber: #FFB400;
@@ -19,9 +19,9 @@ CSS = """<style>
   --bad: #FF5C5C;
 }
 
-.stApp { font-family: 'Barlow', system-ui, sans-serif; }
+.stApp { font-family: 'Barlow', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif; }
 h1, h2, h3, .step .t, .gantry h1 {
-  font-family: 'Barlow Condensed', 'Barlow', sans-serif !important;
+  font-family: 'Barlow Condensed', 'Barlow', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
   letter-spacing: .2px;
 }
 header[data-testid="stHeader"] { background: transparent; }
