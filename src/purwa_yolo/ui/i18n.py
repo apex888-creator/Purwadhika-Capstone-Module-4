@@ -231,7 +231,7 @@ def lang_button(key):
     def _flip():
         st.session_state[LANG_KEY] = "en" if lang() == "zh" else "zh"
 
-    st.button("🌐 中文" if lang() == "en" else "🌐 English",
+    st.button("🌐 简体中文" if lang() == "en" else "🌐 English",
               key=key, on_click=_flip, width="stretch")
 
 
