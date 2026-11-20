@@ -199,8 +199,7 @@ STR = {
 
 # short labels that come from the core / config modules
 WORDS = {
-    "Car": "轿车", "Van": "厢式货车", "Bus": "公交车", "Truck": "卡车",
-    "Motorcycle": "摩托车", "Motorbike": "摩托车",
+    "Car": "汽车", "Van": "厢式货车", "Bus": "公交车",
     "Normal": "正常", "Peak": "高峰", "Off-peak": "非高峰", "Offpeak": "非高峰",
     "Morning peak": "早高峰", "Evening peak": "晚高峰", "Night": "夜间",
     "Light": "畅通", "Free": "畅通", "Busy": "繁忙", "Congested": "拥堵",
