@@ -6,3 +6,11 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "viewer"
+
+[theme]
+base = "dark"
+primaryColor = "#FFB400"
+backgroundColor = "#14171C"
+secondaryBackgroundColor = "#1D2128"
+textColor = "#EEF1F5"
+font = "sans serif"

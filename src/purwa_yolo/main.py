@@ -19,6 +19,7 @@ from purwa_yolo.core.data import OcrResult
 from purwa_yolo.core.pricing import compute_erp
 from purwa_yolo.device import describe_device
 from purwa_yolo.ui import results as view
+from purwa_yolo.ui import theme
 from purwa_yolo.ui.gate import human_check
 from purwa_yolo.ui.sidebar import erp_settings
 from purwa_yolo.vision import detector, pipelines, plate_ocr
@@ -39,9 +40,9 @@ def select_model():
                    f"Place `{cfg.MODEL_FILES[use_case]}` in the `models/` folder.")
         st.stop()
 
-    with st.spinner(f"Loading ERP model..."):
+    with st.spinner("Loading ERP model..."):
         model = detector.load_model(str(path))
-    st.success(f"✅ ERP System loaded! (running on {describe_device()})")
+    theme.status(f"ERP model ready, running on {describe_device()}")
     return use_case, model
 
 
@@ -92,7 +93,7 @@ def run_yolo(use_case, model, upload, conf, imgsz, frame_skip, max_seconds):
 
 def show_detection(det, use_case, settings):
     """Annotated image/video with bounding boxes, plus counts or base charge."""
-    st.subheader("Detection result")
+    st.subheader("📷 Detection result")
     st.caption(f"Processing time: {det.elapsed:.1f} s")
 
     if det.kind == "image":
@@ -131,14 +132,18 @@ def show_detection(det, use_case, settings):
 def detection_section(use_case, model, upload, settings):
     """Section 1. Return the current DetectionResult, or None if not run yet."""
     file, _, is_video = upload
-    st.header("1️⃣ Object detection (YOLO)")
+    theme.step_header(1, "Detect vehicles",
+                      "YOLO finds every vehicle and calculates the base charge.")
 
-    conf = st.slider("Confidence threshold", min_value=0.01,
-                     max_value=0.95, value=0.10, step=0.01)
-    imgsz = st.select_slider(
-        "Inference size (px)", options=cfg.INFER_SIZES, value=cfg.DEFAULT_IMGSZ,
-        help="Smaller is faster; larger can detect small objects better but "
-             "is slower. Try 480 or 640 if processing feels slow.")
+    with st.container(border=True):
+        a, b = st.columns(2)
+        conf = a.slider("Confidence threshold", min_value=0.01,
+                        max_value=0.95, value=0.10, step=0.01)
+        imgsz = b.select_slider(
+            "Inference size (px)", options=cfg.INFER_SIZES,
+            value=cfg.DEFAULT_IMGSZ,
+            help="Smaller is faster; larger can detect small objects better "
+                 "but is slower. Try 480 or 640 if processing feels slow.")
 
     frame_skip = max_seconds = None
     if is_video:
@@ -197,7 +202,8 @@ def run_ocr(det):
 
 def ocr_section(det, settings):
     """Section 2: plate OCR, the odd-even rule and the final charge."""
-    st.header("2️⃣ License plate OCR (fast-alpr)")
+    theme.step_header(2, "Read license plates",
+                      "fast-alpr reads each plate and applies the odd-even rule.")
 
     if not plate_ocr.is_available():
         st.info("Plate reading needs fast-alpr. Run `python -m poetry sync` "
@@ -271,10 +277,14 @@ def show_plate_debug(det, ocr):
 
 
 def main():
-    st.set_page_config(page_title="Object Detection", page_icon="🎯")
+    st.set_page_config(page_title="Electronic Road Pricing", page_icon="🚦",
+                       layout="wide")
+    theme.inject_css()
     human_check()   # front gate: the app below only runs after this is passed
 
-    st.title("🎯 Electronic Road Pricing")
+    theme.hero("Electronic Road Pricing",
+               "Upload a traffic photo or clip and get the road charge in seconds.",
+               flow=("Detect vehicles", "Read plates", "Get charge"))
     use_case, model = select_model()
     settings = erp_settings() if use_case == "Vehicle" else None
 
