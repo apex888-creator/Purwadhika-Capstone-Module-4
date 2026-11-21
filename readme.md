@@ -46,8 +46,6 @@ The Jakarta provincial government has already included ERP in its plan to limit 
 
 **Summary:** there is no single "ERP success rate". Results depend on tariff design, coverage area, and the availability of public transport. Still, in the three reference cities congestion pricing consistently cut traffic in the charged area by roughly **13-30%** and reduced congestion substantially, with effects that lasted for years. Public support in Stockholm also rose from about one third of residents before the trial to around 70% in 2011.
 
-> **Note:** some of the figures above come from summaries or secondary sources. Check them against the original papers (see [References](#references)) before using them in a final report or publication.
-
 ### Where this project fits
 
 A full-scale ERP system needs vehicle detection and classification, licence-plate reading, and automated charge calculation. This project is a **prototype** that shows that pipeline end to end with open-source models running on CPU, and also experiments with an odd-even rule as an additional pricing layer.
