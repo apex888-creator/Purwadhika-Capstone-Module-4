@@ -23,12 +23,12 @@ from purwa_yolo.vision.detector import annotate_frame, run_detection
 def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
     pil_full = Image.open(BytesIO(image_bytes)).convert("RGB")
     full_bgr = np.ascontiguousarray(
-        np.array(pil_full)[:, :, ::-1])   # resolusi asli
+        np.array(pil_full)[:, :, ::-1])
 
     pil_image = pil_full.copy()
     pil_image.thumbnail((1920, 1920))
     frame_bgr = np.ascontiguousarray(np.array(pil_image)[:, :, ::-1])
-    scale = full_bgr.shape[1] / frame_bgr.shape[1]                    # >= 1
+    scale = full_bgr.shape[1] / frame_bgr.shape[1]
 
     names, detections = run_detection(frame_bgr, model, conf, imgsz)
     labels = [f"#{i} {name}" for i, name in enumerate(names, start=1)]
@@ -38,7 +38,7 @@ def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
     if collect_crops:
         for i, (name, box) in enumerate(zip(names, detections.xyxy), start=1):
             x1, y1, x2, y2 = (int(v * scale)
-                              for v in box)            # skala ke gambar asli
+                              for v in box)
             h, w = full_bgr.shape[:2]
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(w, x2), min(h, y2)
@@ -54,7 +54,7 @@ def process_image(image_bytes, model, conf, imgsz, collect_crops=False):
     return DetectionResult(
         kind="image",
         media=np.ascontiguousarray(
-            annotated_bgr[:, :, ::-1]),   # RGB for display
+            annotated_bgr[:, :, ::-1]),
         counts=dict(Counter(names)),
         density=len(names),
         vehicles=vehicles)
@@ -108,29 +108,28 @@ def process_video(video_bytes, suffix, model, conf, imgsz, frame_skip,
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         scale = min(1.0, cfg.MAX_VIDEO_SIDE / max(w, h))
-        out_w, out_h = int(w * scale) // 2 * 2, int(h * scale) // 2 * 2  # even
+        out_w, out_h = int(w * scale) // 2 * 2, int(h * scale) // 2 * 2
         max_frames = int(fps * max_seconds)
         limit = min(total, max_frames) if total else max_frames
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as f:
             out_path = f.name
-        # Output fps is reduced so the duration stays the same when frames are skipped
         write, close_writer, is_h264 = open_video_writer(
             out_path, fps / frame_skip, (out_w, out_h))
 
         tracker = _make_tracker(fps, frame_skip)
         keeper = crops.CropKeeper() if (collect_crops and tracker) else None
 
-        track_votes = defaultdict(Counter)   # track id -> class name votes
-        max_counts = Counter()               # fallback when there is no tracker
-        peak_vehicles = 0                    # most vehicles in a single frame
+        track_votes = defaultdict(Counter)
+        max_counts = Counter()
+        peak_vehicles = 0
 
         idx = processed = 0
         while idx < max_frames:
             if idx % frame_skip == 0:
                 ok, frame = cap.read()
             else:
-                ok, frame = cap.grab(), None   # skip without full decode
+                ok, frame = cap.grab(), None
             if not ok:
                 break
 

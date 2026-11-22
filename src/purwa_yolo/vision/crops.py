@@ -78,7 +78,6 @@ class CropKeeper:
 
     def __init__(self, per_vehicle=cfg.CROPS_PER_VEHICLE):
         self.per_vehicle = per_vehicle
-        # vehicle id -> [(area, jpeg)], largest first
         self._best = defaultdict(list)
 
     def add(self, vehicle_id, frame_bgr, box):
@@ -86,7 +85,7 @@ class CropKeeper:
         area = (x2 - x1) * (y2 - y1)
         best = self._best[vehicle_id]
         if len(best) >= self.per_vehicle and area <= best[-1][0]:
-            return                        # not better than what we already have
+            return
         jpeg = make_crop(frame_bgr, box)
         if jpeg is None:
             return

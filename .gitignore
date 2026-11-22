@@ -28,6 +28,3 @@ runs/
 Thumbs.db
 .idea/
 
-# Model weights: remove this line if you want to commit models/*.pt
-# (best_vehicle.pt is about 20 MB, fine for GitHub; avoid files above 100 MB)
-# *.pt

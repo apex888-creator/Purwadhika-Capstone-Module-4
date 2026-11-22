@@ -12,9 +12,6 @@ def get_device():
 
 DEVICE = get_device()
 
-# Arguments passed to every YOLO call. Ultralytics >= 8.4.80 replaced `half=`
-# with `quantize=` (16 = FP16) and warns whenever `half` is present, even when
-# it is False, so on CPU we pass neither. FP16 only makes sense on a GPU.
 INFER_KWARGS = {"device": DEVICE}
 if DEVICE != "cpu":
     INFER_KWARGS["quantize"] = 16

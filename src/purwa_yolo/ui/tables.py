@@ -30,6 +30,4 @@ def html_table(rows, highlight_last=False):
 
 
 def show_table(rows, highlight_last=False):
-    # st.html does not receive the global CSS reliably in every version,
-    # st.markdown with unsafe_allow_html does.
     st.markdown(html_table(rows, highlight_last), unsafe_allow_html=True)

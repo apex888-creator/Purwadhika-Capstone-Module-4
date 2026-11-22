@@ -19,9 +19,11 @@ from purwa_yolo.core.plate_rules import (date_parity, plate_multiplier,
 class ErpSettings:
     """Everything the sidebar controls. Defaults make it easy to use in tests."""
     currency: str = "USD"
-    fx_rate: float = 1.0                       # units of `currency` per 1 USD
-    base_rates: dict = field(default_factory=lambda: dict(cfg.DEFAULT_RATES_USD))
-    period_mults: dict = field(default_factory=lambda: dict(cfg.DEFAULT_PERIODS))
+    fx_rate: float = 1.0
+    base_rates: dict = field(
+        default_factory=lambda: dict(cfg.DEFAULT_RATES_USD))
+    period_mults: dict = field(
+        default_factory=lambda: dict(cfg.DEFAULT_PERIODS))
     period: str = "Normal"
     density_on: bool = True
     busy_min: int = 5
@@ -41,10 +43,10 @@ class ClassLine:
     key: str
     label: str
     count: int
-    base_rate: float          # USD
-    final_rate: float         # USD, before the plate multiplier
-    surcharged: int           # vehicles that paid the plate surcharge
-    charge: float             # USD, includes the plate multiplier
+    base_rate: float
+    final_rate: float
+    surcharged: int
+    charge: float
 
 
 @dataclass
@@ -62,8 +64,8 @@ class PlateRow:
 class ErpBreakdown:
     lines: list
     total_vehicles: int
-    total_charge: float       # USD
-    total_static: float       # USD at base rates (no multipliers)
+    total_charge: float
+    total_static: float
     period_mult: float
     density_level: str
     density_mult: float
@@ -114,7 +116,7 @@ def compute_erp(counts, density, settings, plates=None):
     use_plates = plates is not None
     plate_warning = None
     if use_plates and len(plates) != sum(norm.values()):
-        use_plates = False   # plates do not match the counted vehicles
+        use_plates = False
         plate_warning = ("Plate readings do not match the detected vehicles, "
                          "so the odd-even rule was not applied.")
 

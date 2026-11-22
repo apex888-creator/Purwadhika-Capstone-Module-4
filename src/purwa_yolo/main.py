@@ -74,7 +74,7 @@ def run_yolo(use_case, model, upload, conf, imgsz, frame_skip, max_seconds):
     """Run the detection pipeline. Return a DetectionResult."""
     file, ext, is_video = upload
     data = file.getvalue()
-    collect = use_case == "Vehicle"       # crops are only needed for plate OCR
+    collect = use_case == "Vehicle"
     t0 = time.perf_counter()
 
     if is_video:
@@ -149,9 +149,6 @@ def detection_section(use_case, model, upload, settings):
     else:
         st.image(file, caption=t("uploaded_img"), width="stretch")
 
-    # A stored result is shown only while these inputs stay the same.
-    # (Rate settings are not here: changing them re-calculates the charge
-    # from the stored result without running YOLO again.)
     params = (file.name, file.size, use_case, conf, imgsz,
               frame_skip, max_seconds)
 
@@ -166,7 +163,7 @@ def detection_section(use_case, model, upload, settings):
             return None
         det.params, det.run_id = params, uuid.uuid4().hex
         st.session_state[DETECTION_KEY] = det
-        st.session_state.pop(OCR_KEY, None)   # a new detection voids old OCR
+        st.session_state.pop(OCR_KEY, None)
 
     det = st.session_state.get(DETECTION_KEY)
     if det is None or det.params != params:
@@ -266,7 +263,7 @@ def main():
     st.set_page_config(page_title="Electronic Road Pricing", page_icon="🚦",
                        layout="wide")
     theme.inject_css()
-    human_check()   # front gate: the app below only runs after this is passed
+    human_check()
 
     theme.hero(t("page_title"), t("hero_sub"),
                flow=(t("flow1"), t("flow2"), t("flow3")))

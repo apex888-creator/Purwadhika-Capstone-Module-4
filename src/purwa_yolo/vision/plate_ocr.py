@@ -90,10 +90,9 @@ def get_plate_reader():
         from fast_alpr import ALPR
         custom = (CustomPlateDetector(cfg.PLATE_MODEL_PATH)
                   if cfg.PLATE_MODEL_PATH.exists() else None)
-        # `detector=None` makes fast-alpr build its own default detector
         alpr = ALPR(detector=custom, detector_model=cfg.PLATE_DETECTOR_MODEL,
                     ocr_model=cfg.PLATE_OCR_MODEL)
-        alpr.predict(np.zeros((160, 320, 3), dtype=np.uint8))   # warm-up
+        alpr.predict(np.zeros((160, 320, 3), dtype=np.uint8))
         return alpr
     except Exception as e:
         raise ValueError(
@@ -136,7 +135,7 @@ def _ocr_plate(alpr, plate):
             if hasattr(alpr, "ocr"):
                 r = alpr.ocr.predict(img)
                 rs = [r] if r is not None else []
-            else:                                   # fallback
+            else:
                 rs = [getattr(x, "ocr", None) for x in alpr.predict(img)]
         except Exception:
             continue
@@ -164,12 +163,12 @@ def read_plate(alpr, crop_bgr, stats=None):
                     int, detections[0].boxes[0].xyxy[0].cpu().numpy())
                 h, w = crop_bgr.shape[:2]
                 px, py = int((x2 - x1) * 0.08), int((y2 - y1)
-                                                    * 0.15)  # padding proporsional
+                                                    * 0.15)
                 x1, y1 = max(0, x1 - px), max(0, y1 - py)
                 x2, y2 = min(w, x2 + px), min(h, y2 + py)
                 best_plate_crop = crop_bgr[y1:y2, x1:x2]
         if best_plate_crop.shape[1] < cfg.MIN_PLATE_PX:
-            return None, None, best_plate_crop    # terlalu kecil, jangan menebak
+            return None, None, best_plate_crop
 
         text, conf = _ocr_plate(alpr, best_plate_crop)
     except Exception as e:
@@ -193,10 +192,10 @@ def read_plates(vehicles, alpr, progress_cb=None, stats=None):
     """
     stats = stats if stats is not None else OcrStats()
     readings = []
-    crops_for_debug = []  # List untuk menyimpan gambar crop
+    crops_for_debug = []
 
     for i, vehicle in enumerate(vehicles):
-        votes = defaultdict(lambda: [0.0, 0])      # text -> [sum_conf, n]
+        votes = defaultdict(lambda: [0.0, 0])
         best_crop_for_vehicle, best_crop_conf = None, -1.0
 
         if i < cfg.MAX_OCR_VEHICLES:
@@ -217,9 +216,6 @@ def read_plates(vehicles, alpr, progress_cb=None, stats=None):
             vehicle.vehicle_id, vehicle.cls,
             best[0] if best else None, best[1] if best else 0.0))
 
-        # ========================================================
-        # TAMBAHKAN BARIS INI AGAR GAMBAR MASUK KE DALAM LIST
-        # ========================================================
         crops_for_debug.append(best_crop_for_vehicle)
 
         if progress_cb:

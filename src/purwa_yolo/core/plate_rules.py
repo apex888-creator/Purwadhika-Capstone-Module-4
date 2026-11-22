@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from purwa_yolo.app_config import UTC_OFFSET_HOURS
 
-# Melonggarkan format: Izinkan 1-6 huruf di depan, 1-4 angka, dan 0-6 huruf di belakang
+# format Plate: Izinkan 1-6 huruf di depan, 1-4 angka, dan 0-6 huruf di belakang
 PLATE_RE = re.compile(r"^([A-Z]{1,6})(\d{1,4})([A-Z]{0,6})$")
 
 
@@ -41,7 +41,6 @@ def plate_shape(text):
         return "unknown"
     clean = clean_plate(text)
     if PLATE_RE.match(clean):
-        # 1-2 letters + 1-4 digits + 0-3 letters -> fits on one row
         return "single"
     if len(clean) > 9:
         return "double"

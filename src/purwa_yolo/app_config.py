@@ -8,9 +8,7 @@ MODELS_DIR = PROJECT_ROOT / "models"
 
 # Map selection to model filename
 MODEL_FILES = {
-    "Construction Equipment": "best_construction.pt",
     "Vehicle": "best_vehicle.pt",
-    "Fruit": "best_fruit.pt",
 }
 FALLBACK_VEHICLE_MODEL = "best.pt"   # used when best_vehicle.pt does not exist
 

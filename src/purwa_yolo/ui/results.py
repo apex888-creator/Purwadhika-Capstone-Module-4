@@ -72,7 +72,6 @@ def show_erp(b, settings, density, density_basis, title):
     show_table(rows, highlight_last=True)
     st.write("")
 
-    # what was applied, as chips
     theme.chips(
         (t("chip_period", p=tr(settings.period), m=b.period_mult), ""),
         (t("chip_density", lvl=tr(b.density_level), m=b.density_mult,

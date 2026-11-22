@@ -3,7 +3,7 @@ services:
     build: .
     image: purwa-yolo:latest
     ports:
-      - "8888:8888" # kalau bentrok, ganti kiri saja, mis. "8501:8888"
+      - "8888:8888"
     volumes:
       # cache model yang diunduh saat runtime (fast-alpr, dll) supaya tidak download ulang
       - model-cache:/home/app/.cache

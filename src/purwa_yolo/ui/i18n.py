@@ -25,7 +25,7 @@ STR = {
     "gate_locked": ("Too many wrong answers.", "错误次数过多。"),
     "gate_wait": ("Please wait a few seconds and reload the page.",
                   "请等待几秒钟后重新加载页面。"),
-    "gate_answer": ("Your answer", "你的答案"),
+    "gate_answer": ("Your answer", "您的答案"),
     "gate_placeholder": ("Type a number", "请输入数字"),
     "gate_continue": ("Continue", "继续"),
     "gate_wrong": ("That was not right. Try the new question.",
@@ -230,7 +230,7 @@ def lang_button(key):
     def _flip():
         st.session_state[LANG_KEY] = "en" if lang() == "zh" else "zh"
 
-    st.button("🌐 简体中文" if lang() == "en" else "🌐 English",
+    st.button("🌐 语言：简体中文" if lang() == "en" else "🌐 Language: English",
               key=key, on_click=_flip, width="stretch")
 
 
