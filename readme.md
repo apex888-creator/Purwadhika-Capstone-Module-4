@@ -264,14 +264,6 @@ The main constants are in `src/purwa_yolo/app_config.py`.
 
 On Windows + conda, `streamlit_app.py` sets `KMP_DUPLICATE_LIB_OK=TRUE` to avoid the OpenMP error (`OMP: Error #15`). The cleaner fix is to leave only one copy of `libiomp5md.dll` in the environment.
 
-## Testing
-
-```bash
-python -m poetry run pytest
-```
-
-Tests cover `crops`, `device`, `pipelines`, `plate_ocr`, `plate_rules`, `pricing`, and `tables` (see `tests/`).
-
 ## Limitations
 
 - This is a **prototype/simulation**, not a production billing system.
