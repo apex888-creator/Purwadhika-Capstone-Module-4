@@ -1,4 +1,4 @@
-# Purwa YOLO: Electronic Road Pricing (ERP) Simulation with Computer Vision
+# Electronic Road Pricing (ERP) Simulation with Computer Vision
 
 A Streamlit web app that simulates an **Electronic Road Pricing (ERP)** system for major roads. It detects and counts vehicles (car, van, bus) from images or videos using **YOLO26s**, reads licence plates using **fast-alpr**, and then calculates the ERP charge, including an **odd-even** plate rule.
 
