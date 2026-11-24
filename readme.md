@@ -15,9 +15,9 @@ A Streamlit web app that simulates an **Electronic Road Pricing (ERP)** system f
 - [Running the App](#running-the-app)
 - [ERP Pricing Logic](#erp-pricing-logic)
 - [Configuration](#configuration)
-- [Testing](#testing)
 - [Limitations](#limitations)
 - [References](#references)
+- [Attachment](#Attachment)
 
 ---
 
@@ -283,6 +283,9 @@ On Windows + conda, `streamlit_app.py` sets `KMP_DUPLICATE_LIB_OK=TRUE` to avoid
 6. Susilardi, D., Surjono, & Badriyah, N. *Design of Electronic Road Pricing in Jakarta Based on Willingness and Ability to Pay.* IIETA.
 7. ANTARA (2024). *Jakarta aims to complete regulation on limiting private vehicles* (Jakarta congestion losses, Coordinating Ministry for Economic Affairs study 2018).
 
-## Testing Sample
+## Attachment
 
-https://drive.google.com/drive/folders/1adbDU6A1pkbmZda0Ooy0nUGGvMqbJjjM?usp=sharing 
+Testing Sample: https://drive.google.com/drive/folders/1adbDU6A1pkbmZda0Ooy0nUGGvMqbJjjM?usp=sharing 
+PPT: https://drive.google.com/file/d/16vO3RQgQG0EU8tZTEJUd7SzxWL8BNkXL/view?usp=sharing 
+Youtube: https://youtu.be/HFcvHoAKal0
+Streamlit: https://purwadhika-capstone-module-4-yolo-ocr-steven.streamlit.app/
