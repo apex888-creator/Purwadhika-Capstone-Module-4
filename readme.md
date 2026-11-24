@@ -282,3 +282,7 @@ On Windows + conda, `streamlit_app.py` sets `KMP_DUPLICATE_LIB_OK=TRUE` to avoid
 5. U.S. FHWA, Office of Operations. *Congestion Pricing: Examples from around the world* (ops.fhwa.dot.gov/congestionpricing).
 6. Susilardi, D., Surjono, & Badriyah, N. *Design of Electronic Road Pricing in Jakarta Based on Willingness and Ability to Pay.* IIETA.
 7. ANTARA (2024). *Jakarta aims to complete regulation on limiting private vehicles* (Jakarta congestion losses, Coordinating Ministry for Economic Affairs study 2018).
+
+## Testing Sample
+
+https://drive.google.com/drive/folders/1adbDU6A1pkbmZda0Ooy0nUGGvMqbJjjM?usp=sharing 
