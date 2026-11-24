@@ -101,13 +101,14 @@ Charge table, summary, and annotated media
 | Purpose | Model | Location |
 |---|---|---|
 | Vehicle detection | YOLO26s (fine-tuned, classes: `car`, `van`, `bus`) | `models/best.pt` |
-| Plate detector (optional, custom) | YOLOv12n, single class | `models/Detect_Plate_Model.pt` |
-| Plate detector (default) | `yolo-v9-t-384-license-plate-end2end` | downloaded automatically by fast-alpr |
+| Plate detector (custom) | YOLOv12n, single class | `models/Detect_Plate_Model.pt` |
 | Plate OCR | `cct-s-v2-global-model` | downloaded automatically by fast-plate-ocr |
 
 If `Detect_Plate_Model.pt` exists, it replaces fast-alpr's built-in plate detector; the plate text is still read by fast-plate-ocr.
 
 The training code for the vehicle detection model is in `training_code/vehicle-detection-yolo26s.ipynb`.
+
+The plate detector YOLO Model is downloaded from : https://www.kaggle.com/models/idrisskh/plate-detector/ 
 
 ## Project Structure
 
