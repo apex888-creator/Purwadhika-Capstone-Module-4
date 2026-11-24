@@ -285,7 +285,7 @@ On Windows + conda, `streamlit_app.py` sets `KMP_DUPLICATE_LIB_OK=TRUE` to avoid
 
 ## Attachment
 
-Testing Sample: https://drive.google.com/drive/folders/1adbDU6A1pkbmZda0Ooy0nUGGvMqbJjjM?usp=sharing 
-PPT: https://drive.google.com/file/d/16vO3RQgQG0EU8tZTEJUd7SzxWL8BNkXL/view?usp=sharing 
-Youtube: https://youtu.be/HFcvHoAKal0
-Streamlit: https://purwadhika-capstone-module-4-yolo-ocr-steven.streamlit.app/
+- Testing Sample: https://drive.google.com/drive/folders/1adbDU6A1pkbmZda0Ooy0nUGGvMqbJjjM?usp=sharing 
+- PPT: https://drive.google.com/file/d/16vO3RQgQG0EU8tZTEJUd7SzxWL8BNkXL/view?usp=sharing 
+- Youtube: https://youtu.be/HFcvHoAKal0
+- Streamlit: https://purwadhika-capstone-module-4-yolo-ocr-steven.streamlit.app/
