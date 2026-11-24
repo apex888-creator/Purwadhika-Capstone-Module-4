@@ -108,7 +108,7 @@ If `Detect_Plate_Model.pt` exists, it replaces fast-alpr's built-in plate detect
 
 The training code for the vehicle detection model is in `training_code/vehicle-detection-yolo26s.ipynb`.
 
-The plate detector YOLO Model is downloaded from : https://www.kaggle.com/models/idrisskh/plate-detector/ 
+The YOLO Model (YOLO 12n) used in plate detection is downloaded from : https://www.kaggle.com/models/idrisskh/plate-detector/ 
 
 ## Project Structure
 
